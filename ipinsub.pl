@@ -83,38 +83,80 @@ sub ipRange {
   return ($low, $high, $range);
 }
 
-# Receives a valid subnet(ipv4/cidr) Returns a network IP.
-sub networkAddr {
+# Receives a valid subnet(ipv4/cidr) Returns a network IPv4.
+sub networkAddrIpv4 {
+  my $subnet = shift;
+  my $network_ip = dec2ip(networkAddrDec($subnet));
+  return $network_ip;
+}
+
+# Receives a valid subnet(ipv4/cidr) Returns a network Dec IP.
+sub networkAddrDec {
   my $subnet = shift;
   my ($ip, $cidr) = split(/\//, $subnet);
   my $dec = ip2dec($ip);
-  my $zero = substr("0"x(32 - $cidr), 0);
-  my $one = substr("1"x$cidr, 0);
-  my $netmask = "$one$zero";
-  #TODO (check cidr =1,32.
-  my $range = 2 ** (32 - $cidr);
-  if ( $range > 1 ){
-    $range =- 2;
-  }
-  return $range
+  my $bitmask = cidr2BitMask($cidr);
+  my $bin_ip = ip2bin();
   
 }
 
-# Receives a valid subnet(ipv4/cidr) Returns a broadcast IP.
-sub broadcastAddr {
-  
+# Receives a valid CIDR Returns the Range of IPs.
+sub cidrRange {
+  my $cidr = shift;
+  my $range = ( 2 ** (32 - $cidr));
+  return $range
+}
+
+# Receives a valid subnet(ipv4/cidr) Returns a broadcast IPv4.
+sub broadcastAddrIpv4 {
+  my $subnet = shift;
+  my $broadcast_ip = dec2ip(broadcastAddrDec($subnet));
+  return $broadcast_ip;
+}
+
+# Receives a valid subnet(ipv4/cidr) Returns a broadcast Dec IP.
+sub broadcastAddrDec {
+  my $subnet = shift;
+  my ($ip, $cidr) = split(/\//, $subnet);
+  my $network_dec = networkAddrDec($subnet);
+  my $range = cidrRange($cidr);
+  my $broadcast_dec = $network_dec + $range;
+  return $broadcast_dec
 }
 
 sub ipInSub {
   
 }
 
+# Receives a valid cidr Returns a network mask in ipv4.
+sub cidr2Ipv4Mask {
+  my $cidr = shift;
+  my @netmask = ();
+  my $bitmask = cidr2BitMask($cidr);
+  my @octets = split(/./, $bitmask);
+  foreach my $octet (@octets) {
+    push(@netmask, bin2dec($octet));
+  }
+  return join(".", @netmask);
+}
+
+# Receives a valid CIDR Returns a binary Network Mask(32bits) divided in 4
+# octets.
+sub cidr2BitMask {
+  my $cidr = shift;
+  my $zero = substr("0"x(32 - $cidr), 0);
+  my $one = substr("1"x$cidr, 0);
+  my $netmask = "$one$zero";
+  $netmask =~ s/([01]{8})([01]{8})([01]{8})([01]{8})/\1.\2.\3.\4/;
+  return $netmask;
+}
+
 sub main {
   my $ip = "10.100.255.91";
-  my $subnet = $ip."/32";
-
+  my $cidr = $ARGV[0];
+  my $subnet = $ip."/$cidr";
   if ( validSubnet($subnet) ) {
-    printf "ftw!\n";
+    networkAddr($subnet);
   }
   else {
     printf "fail!\n";
