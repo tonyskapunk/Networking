@@ -65,11 +65,12 @@ sub validSubnet {
   return 1;
 }
 
+# Receives a valid cidr
+# Returns a ipv4 netmask
 sub mask {
-  
 }
 
-# Recieves a valid subnet(ipv4/cidr)
+# Receives a valid subnet(ipv4/cidr)
 # Returns an array of decimal values with low, high and range.
 sub ipRange {
   my $subnet = shift;
@@ -84,6 +85,18 @@ sub ipRange {
 
 # Receives a valid subnet(ipv4/cidr) Returns a network IP.
 sub networkAddr {
+  my $subnet = shift;
+  my ($ip, $cidr) = split(/\//, $subnet);
+  my $dec = ip2dec($ip);
+  my $zero = substr("0"x(32 - $cidr), 0);
+  my $one = substr("1"x$cidr, 0);
+  my $netmask = "$one$zero";
+  #TODO (check cidr =1,32.
+  my $range = 2 ** (32 - $cidr);
+  if ( $range > 1 ){
+    $range =- 2;
+  }
+  return $range
   
 }
 
