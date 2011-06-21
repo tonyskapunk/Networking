@@ -18,10 +18,23 @@ sub dec2bin {
   return $bin;
 }
 
-# bin2dec (8bits)
-sub bin2dec {
+#ipv4 to bin(32bits)
+sub ip2bin {
+  my $ip = shift;
+  my $bin = dec2bin(ip2dec($ip));
+  return $bin;
+}
+
+# binbit2dec (8bits)
+sub binbit2dec {
   my $bin = shift;
   return unpack("C", pack("B8", $bin));
+}
+
+# bin2dec (32bits)
+sub bin2dec {
+  my $bin = shift;
+  return ip2dec(bin2ipv4($bin));
 }
 
 # dec (32bit) to ipv4
@@ -32,7 +45,19 @@ sub dec2ip {
   $bin =~ s/([01]{8})([01]{8})([01]{8})([01]{8})/\1 \2 \3 \4/;
   my @octets = split(/ /, $bin);
   foreach my $octet (@octets) {
-    push(@ip, bin2dec($octet));
+    push(@ip, binbit2dec($octet));
+  }
+  return join(".", @ip);
+}
+
+# bin(32bit) to ipv4
+sub bin2ipv4 {
+  my $bin = shift;
+  my @ip = ();
+  $bin =~ s/([01]{8})([01]{8})([01]{8})([01]{8})/\1.\2.\3.\4/;
+  my @octets = split(/\./, $bin);
+  foreach my $octet (@octets) {
+    push(@ip, binbit2dec($octet));
   }
   return join(".", @ip);
 }
@@ -94,10 +119,13 @@ sub networkAddrIpv4 {
 sub networkAddrDec {
   my $subnet = shift;
   my ($ip, $cidr) = split(/\//, $subnet);
-  my $dec = ip2dec($ip);
   my $bitmask = cidr2BitMask($cidr);
-  my $bin_ip = ip2bin();
-  
+  my $bin_ip = ip2bin($ip);
+  $bitmask = "0b$bitmask";
+  $bin_ip = "0b$bin_ip";
+  my $network_bin = $bitmask & $bin_ip;
+  $network_bin =~ s/^0b//;
+  return bin2dec($network_bin);
 }
 
 # Receives a valid CIDR Returns the Range of IPs.
@@ -120,7 +148,7 @@ sub broadcastAddrDec {
   my ($ip, $cidr) = split(/\//, $subnet);
   my $network_dec = networkAddrDec($subnet);
   my $range = cidrRange($cidr);
-  my $broadcast_dec = $network_dec + $range;
+  my $broadcast_dec = $network_dec + $range - 1;
   return $broadcast_dec
 }
 
@@ -131,13 +159,9 @@ sub ipInSub {
 # Receives a valid cidr Returns a network mask in ipv4.
 sub cidr2Ipv4Mask {
   my $cidr = shift;
-  my @netmask = ();
   my $bitmask = cidr2BitMask($cidr);
-  my @octets = split(/./, $bitmask);
-  foreach my $octet (@octets) {
-    push(@netmask, bin2dec($octet));
-  }
-  return join(".", @netmask);
+  my $netmask = bin2ipv4($bitmask);
+  return $netmask;
 }
 
 # Receives a valid CIDR Returns a binary Network Mask(32bits) divided in 4
@@ -147,8 +171,12 @@ sub cidr2BitMask {
   my $zero = substr("0"x(32 - $cidr), 0);
   my $one = substr("1"x$cidr, 0);
   my $netmask = "$one$zero";
-  $netmask =~ s/([01]{8})([01]{8})([01]{8})([01]{8})/\1.\2.\3.\4/;
   return $netmask;
+}
+
+# 
+sub cidr2ip {
+  
 }
 
 sub main {
@@ -156,7 +184,12 @@ sub main {
   my $cidr = $ARGV[0];
   my $subnet = $ip."/$cidr";
   if ( validSubnet($subnet) ) {
-    networkAddr($subnet);
+    printf "cidr2Ipv4Mask: %s\n", cidr2Ipv4Mask($cidr);
+    printf "networkAddrDec: %s\n", networkAddrDec($subnet);
+    printf "networkAddrIpv4: %s\n", networkAddrIpv4($subnet);
+    printf "cidrRange: %s\n", cidrRange($cidr);
+    printf "broadcastAddrDec: %s\n", broadcastAddrDec($subnet);
+    printf "broadcastAddrIpv4: %s\n", broadcastAddrIpv4($subnet);
   }
   else {
     printf "fail!\n";
